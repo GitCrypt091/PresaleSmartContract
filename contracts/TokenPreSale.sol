@@ -372,6 +372,11 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         );
     }
 
+     /**
+     * @dev To update the max amount of tokens someone can buy
+     * @param _id Presale id to update
+     * @param _newMaxAmountTokensForSalePerUser New max amount 
+     */
     function changeMaxAmountTokensForSalePerUser(uint256 _id, uint256 _newMaxAmountTokensForSalePerUser)
         external
         checkPresaleId(_id)
@@ -575,7 +580,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                 abi.encodeWithSignature(
                     "transferFrom(address,address,uint256)",
                     _msgSender(),
-                    owner(),
+                    address(this),
                     usdPrice
                 )
             );
@@ -635,7 +640,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                         _presale.vestingPeriod
                 );
             }
-            sendValue(payable(owner()), ethAmount);
+            sendValue(payable(address(this)), ethAmount);
             if (excess > 0) sendValue(payable(_msgSender()), excess);
             emit TokensBought(
                 _msgSender(),
