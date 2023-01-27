@@ -21,6 +21,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         uint256 endTime;
         uint256 price;
         uint256 tokensToSell;
+        uint256 maxAmountTokensForSalePerUser
         uint256 baseDecimals;
         uint256 inSale;
         uint256 vestingStartTime;
@@ -116,10 +117,13 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
     /**
      * @dev Creates a new presale
-     * @param _startTime start time of the sale
-     * @param _endTime end time of the sale
+     * @param _startTimePhase1 start time of the sale
+     * @param _endTimePhase1 end time of the sale
+     * @param _startTimePhase2 start time of the sale
+     * @param _endTimePhase2 end time of the sale
      * @param _price Per token price multiplied by (10**18)
      * @param _tokensToSell No of tokens to sell without denomination. If 1 million tokens to be sold then - 1_000_000 has to be passed
+     * @param _maxAmountTokensForSalePerUser Max no of tokens someone can buy
      * @param _baseDecimals No of decimals for the token. (10**18), for 18 decimal token
      * @param _vestingStartTime Start time for the vesting - UNIX timestamp
      * @param _vestingCliff Cliff period for vesting in seconds
@@ -128,12 +132,13 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
      * @param _enableBuyWithUsdt Enable/Disable buy of tokens with USDT
      */
     function createPresale(
-        uint256 _startTimePhase2,
+        uint256 _startTimePhase1,
         uint256 _endTimePhase1,
         uint256 _startTimePhase2,
         uint256 _endTimePhase2,
         uint256 _price,
         uint256 _tokensToSell,
+        uint256 _maxAmountTokensForSalePerUser,
         uint256 _baseDecimals,
         uint256 _vestingStartTime,
         uint256 _vestingCliff,
@@ -167,8 +172,8 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             _endTimePhase2,
             _price,
             _tokensToSell,
+            _maxAmountTokensForSalePerUser
             _baseDecimals,
-            _tokensToSell,
             _vestingStartTime,
             _vestingCliff,
             _vestingPeriod,
@@ -176,7 +181,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             _enableBuyWithUsdt
         );
 
-        emit PresaleCreated(presaleId, _tokensToSell, _startTimePhase1, _endTimePhase1, _startTimePhase2, _endTimePhase2, _enableBuyWithEth, _enableBuyWithUsdt);
+        emit PresaleCreated(presaleId, _tokensToSell, _maxAmountTokensForSalePerUser, _startTimePhase1, _endTimePhase1, _startTimePhase2, _endTimePhase2, _enableBuyWithEth, _enableBuyWithUsdt);
     }
 
     /**
@@ -448,8 +453,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     modifier checkSaleState(uint256 _id, uint256 amount) {
         require(
             block.timestamp >= presale[_id].startTimePhase1 &&
-                block.timestamp >= presale[_id].startTimePhase2 &&
-                    block.timestamp <= presale[_id].endTime,
+                block.timestamp <= presale[_id].endTime,
             "Invalid time for buying"
         );
         require(
@@ -470,6 +474,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         checkSaleState(_id, amount)
         returns (bool)
     {
+        require(amount <= _maxAmountTokensForSalePerUser, "You are trying to buy too many tokens")
         require(!paused[_id], "Presale paused");
         require(presale[_id].enableBuyWithUsdt > 0, "Not allowed to buy with USDT");
         uint256 usdPrice = amount * presale[_id].price;
@@ -580,6 +585,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         nonReentrant
         returns (bool)
     {
+        require(amount <= _maxAmountTokensForSalePerUser, "You are trying to buy too many tokens")
         require(!paused[_id], "Presale paused");
         require(presale[_id].enableBuyWithEth > 0, "Not allowed to buy with ETH");
         uint256 usdPrice = amount * presale[_id].price;
