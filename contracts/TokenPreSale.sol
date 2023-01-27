@@ -372,6 +372,30 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         );
     }
 
+    function changeMaxAmountTokensForSalePerUser(uint256 _id, uint256 _newMaxAmountTokensForSalePerUser)
+        external
+        checkPresaleId(_id)
+        onlyOwner
+    {
+        require(_newMaxAmountTokensForSalePerUser < tokensToSell, "number too big");
+        require(
+            presale[_id].startTimePhase1 > block.timestamp,
+            "Sale already started"
+        );
+        require(
+            presale[_id].startTimePhase2 > block.timestamp,
+            "Sale already started"
+        );
+        uint256 prevValue = presale[_id].maxAmountTokensForSalePerUser;
+        presale[_id]._maxAmountTokensForSalePerUser = _newMaxAmountTokensForSalePerUser;
+        emit PresaleUpdated(
+            bytes32("MAXTOKENS"),
+            prevValue,
+            _newMaxAmountTokensForSalePerUser,
+            block.timestamp
+        );
+    }
+
     /**
      * @dev To update possibility to buy with ETH
      * @param _id Presale id to update
