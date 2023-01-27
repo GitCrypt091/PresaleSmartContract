@@ -13,7 +13,8 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     uint256 public presaleId;
     uint256 public BASE_MULTIPLIER;
     uint256 public MONTH;
-    address[] whitelist;
+    uint256 public WETH;
+    
 
     struct Presale {
         address saleToken;
@@ -21,7 +22,8 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         uint256 endTime;
         uint256 price;
         uint256 tokensToSell;
-        uint256 maxAmountTokensForSalePerUser
+        uint256 maxAmountTokensForSalePerUser;
+        uint256 amountTokensForLiquidity;
         uint256 baseDecimals;
         uint256 inSale;
         uint256 vestingStartTime;
@@ -29,6 +31,9 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         uint256 vestingPeriod;
         uint256 enableBuyWithEth;
         uint256 enableBuyWithUsdt;
+        uint256 marketingPercentage
+        bool presaleFinalized;
+        address[] whitelist;
     }
 
     struct Vesting {
@@ -39,6 +44,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     }
 
     IERC20Upgradeable public USDTInterface;
+    IERC20Upgradeable public RouterInterface;
     AggregatorV3Interface internal aggregatorInterface; // https://docs.chain.link/docs/ethereum-addresses/ => (ETH / USD)
 
     mapping(uint256 => bool) public paused;
@@ -58,8 +64,12 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     event PresaleCreated(
         uint256 indexed _id,
         uint256 _totalTokens,
-        uint256 _startTime,
-        uint256 _endTime,
+        uint256 _maxTokensSell
+        uint256 _tokensForLiquidity
+        uint256 _startTime1,
+        uint256 _endTime1,
+        uint256 _startTime2,
+        uint256 _endTime2,
         uint256 enableBuyWithEth,
         uint256 enableBuyWithUsdt
     );
@@ -95,6 +105,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
     event PresalePaused(uint256 indexed id, uint256 timestamp);
     event PresaleUnpaused(uint256 indexed id, uint256 timestamp);
+    event PresaleFinalized(uint256 indexed id, uint256 timestamp);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
@@ -103,16 +114,21 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
      * @dev Initializes the contract and sets key parameters
      * @param _oracle Oracle contract to fetch ETH/USDT price
      * @param _usdt USDT token contract address
+     * @param _router Router contract to add liquidity to
+     * @param _weth WETH address
      */
-    function initialize(address _oracle, address _usdt) external initializer {
+    function initialize(address _oracle, address _usdt, address _router, address _weth) external initializer {
         require(_oracle != address(0), "Zero aggregator address");
         require(_usdt != address(0), "Zero USDT address");
+        require(_router != address(0), "Zero router address");
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
         aggregatorInterface = AggregatorV3Interface(_oracle);
         USDTInterface = IERC20Upgradeable(_usdt);
+        RouterInterface = IERC20Upgradeable(_router);
         BASE_MULTIPLIER = (10**18);
         MONTH = (30 * 24 * 3600);
+        WETH = _weth
     }
 
     /**
@@ -124,12 +140,16 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
      * @param _price Per token price multiplied by (10**18)
      * @param _tokensToSell No of tokens to sell without denomination. If 1 million tokens to be sold then - 1_000_000 has to be passed
      * @param _maxAmountTokensForSalePerUser Max no of tokens someone can buy
+     * @param _amountTokensForLiquidity Amount of tokens for liquidity
      * @param _baseDecimals No of decimals for the token. (10**18), for 18 decimal token
      * @param _vestingStartTime Start time for the vesting - UNIX timestamp
      * @param _vestingCliff Cliff period for vesting in seconds
      * @param _vestingPeriod Total vesting period(after vesting cliff) in seconds
      * @param _enableBuyWithEth Enable/Disable buy of tokens with ETH
      * @param _enableBuyWithUsdt Enable/Disable buy of tokens with USDT
+     * @param _marketingPercentage Percentage of raised funds that will go to the team
+     * @param _presaleFinalized false by default, can only be true after liquidity has been added
+     * @param _whitelist array of addresses that are allowed to buy in phase 1
      */
     function createPresale(
         uint256 _startTimePhase1,
@@ -139,12 +159,16 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         uint256 _price,
         uint256 _tokensToSell,
         uint256 _maxAmountTokensForSalePerUser,
+        uint256 _amountTokensForLiquidity,
         uint256 _baseDecimals,
         uint256 _vestingStartTime,
         uint256 _vestingCliff,
         uint256 _vestingPeriod,
         uint256 _enableBuyWithEth,
-        uint256 _enableBuyWithUsdt
+        uint256 _enableBuyWithUsdt,
+        uint256 _marketingPercentage
+        bool _presaleFinalized,
+        address[] _whitelist
     ) external onlyOwner {
         require(
             _startTimePhase1 > block.timestamp && _endTimePhase1 > _startTimePhase1,
@@ -155,6 +179,8 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             "Invalid time"
         );
         require(_price > 0, "Zero price");
+        require(_marketingPercentage < 40, "Can not be greater than 40 percent")
+        require(_presaleFinalized == false, "Presale can not be finalized");
         require(_tokensToSell > 0, "Zero tokens to sell");
         require(_baseDecimals > 0, "Zero decimals for the token");
         require(
@@ -172,16 +198,18 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             _endTimePhase2,
             _price,
             _tokensToSell,
-            _maxAmountTokensForSalePerUser
+            _maxAmountTokensForSalePerUser,
+            _amountTokensForLiquidity,
             _baseDecimals,
             _vestingStartTime,
             _vestingCliff,
             _vestingPeriod,
             _enableBuyWithEth,
-            _enableBuyWithUsdt
+            _enableBuyWithUsdt,
+            _whitelist
         );
 
-        emit PresaleCreated(presaleId, _tokensToSell, _maxAmountTokensForSalePerUser, _startTimePhase1, _endTimePhase1, _startTimePhase2, _endTimePhase2, _enableBuyWithEth, _enableBuyWithUsdt);
+        emit PresaleCreated(presaleId, _tokensToSell, _maxAmountTokensForSalePerUser, _amountTokensForLiquidity, _startTimePhase1, _endTimePhase1, _startTimePhase2, _endTimePhase2, _enableBuyWithEth, _enableBuyWithUsdt);
     }
 
     /**
@@ -276,7 +304,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         onlyOwner
     {
         for (uint256 i = 0; i < _wallets.length; i++) {
-            whitelist.push(_wallets[i]);
+            presale[_id].whitelist.push(_wallets[i]);
         }
         emit AddedToWhitelist(_id, _wallets);
     }
@@ -291,9 +319,9 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         checkPresaleId(_id)
         onlyOwner
     {
-        for (uint256 i = 0; i < whitelist.length; i++) {
-        if (whitelist[i] == _wallet) {
-            delete whitelist[i];
+        for (uint256 i = 0; i < resale[_id].whitelist.length; i++) {
+        if (resale[_id].whitelist[i] == _wallet) {
+            delete resale[_id].whitelist[i];
         }
     }
         emit RemovedFromWhitelist(_id, _wallets);
@@ -368,6 +396,46 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             bytes32("PRICE"),
             prevValue,
             _newPrice,
+            block.timestamp
+        );
+    }
+
+     /**
+     * @dev To update the amount of tokens that will be added to liquidity
+     * @param _id Presale id to update
+     * @param _newAmountTokensForLiquidity new amount
+     */
+    function changeAmountTokensForLiquidity(uint256 _id, uint256 _newAmountTokensForLiquidity)
+        external
+        checkPresaleId(_id)
+        onlyOwner
+    {
+        uint256 prevValue = presale[_id].maxAmountTokensForSalePerUser;
+        presale[_id].maxAmountTokensForSalePerUser = _newAmountTokensForLiquidity;
+        emit PresaleUpdated(
+            bytes32("TOKENSLIQUIDITY"),
+            prevValue,
+            _newAmountTokensForLiquidity,
+            block.timestamp
+        );
+    }
+
+     /**
+     * @dev To update the marketing percentage that will go to the team
+     * @param _id Presale id to update
+     * @param _newAmountTokensForLiquidity The new marketing percentage
+     */
+    function changeMarketingPercentage(uint256 _id, uint256 _newMarketingPercentage)
+        external
+        checkPresaleId(_id)
+        onlyOwner
+    {
+        uint256 prevValue = presale[_id].marketingPercentage;
+        presale[_id].marketingPercentage = _newMarketingPercentage;
+        emit PresaleUpdated(
+            bytes32("MARKETINGPERCENTAGE"),
+            prevValue,
+            _newMarketingPercentage,
             block.timestamp
         );
     }
@@ -466,6 +534,71 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     }
 
     /**
+     * @dev To finalize the sale by adding the tokens to liquidity and sending the marketing percentage to the team
+     * @param _id Presale id to update
+     */
+    function finalizeAndAddLiquidity(uint256 _id)
+        external
+        checkPresaleId(_id)
+        onlyOwner
+    {
+        require(presale[_id].presaleFinalized == false, "already finalized");
+        address USDTAddress = address(USDTInterface);
+        uint256 USDTBalance = USDTAddress.balance;
+
+        uint256 ETHBalance = address(this).balance;
+        
+        uint256 marketingAmountUSDT = USDTBalance.mul(marketingPercentage) / 100
+        uint256 marketingAmountETH = ETHBalance.mul(marketingPercentage) / 100
+
+        if (USDTBalance > 0) {
+            (bool success, ) = address(USDTInterface).call(
+                abi.encodeWithSignature(
+                    "transferFrom(address,address,uint256)",
+                    address(this),
+                    owner(),
+                    marketingAmountUSDT
+                )
+            );
+        }
+
+        if (ETHBalance > 0) {
+            address teamAddress = owner();
+            ownerAddress.transfer(marketingAmountETH);
+        }
+
+        int256 newUSDTBalance = USDTAddress.balance;
+        
+        // swap USDT into ETH
+        (bool success, ) = address(RouterInterface).call(
+                abi.encodeWithSignature(
+                    "swapExactTokensForETH(uint256,uint256,address[],address,uint256)",
+                    newUSDTBalance,
+                    0,
+                    [USDTAddress, _weth],
+                    address(this),
+                    999999999999999
+                )
+            );
+
+        uint256 newETHBalance = address(this).balance;
+
+        // add liquidity
+        (bool success, ) = address(RouterInterface).call(
+                abi.encodeWithSignature(
+                    "addLiquidityETH(address,uint256,uint256,uint256,address,uint256)",
+                    presale[_id].saleToken,
+                    presale[_id].amountTokensForLiquidity,
+                    0,
+                    0,
+                    owner(),
+                    999999999999999
+                )
+            );
+        emit PresaleFinalized(_id, block.timestamp);
+    }
+
+    /**
      * @dev To get latest ethereum price in 10**18 format
      */
     function getLatestPrice() public view returns (uint256) {
@@ -514,7 +647,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
         // Phase 1 is active and Phase 2 did not start yet. Whitelist required
         if (block.timestamp > presale[_id]._startTimePhase1 && block.timestamp < presale[_id]._startTimePhase2) {
-            require(whitelist.indexOf(msg.sender) != -1, "Not whitelisted");
+            require(resale[_id].whitelist.indexOf(msg.sender) != -1, "Not whitelisted");
             if (userVesting[_msgSender()][_id].totalAmount > 0) {
                 userVesting[_msgSender()][_id].totalAmount += (amount *
                     _presale.baseDecimals);
@@ -538,7 +671,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                 abi.encodeWithSignature(
                     "transferFrom(address,address,uint256)",
                     _msgSender(),
-                    owner(),
+                    address(this),
                     usdPrice
                 )
             );
@@ -626,7 +759,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
         // Phase 1 is active and Phase 2 did not start yet. Whitelist required
         if (block.timestamp > presale[_id]._startTimePhase1 && block.timestamp < presale[_id]._startTimePhase2) {
-            require(whitelist.indexOf(msg.sender) != -1, "Not whitelisted");
+            require(resale[_id].whitelist.indexOf(msg.sender) != -1, "Not whitelisted");
             if (userVesting[_msgSender()][_id].totalAmount > 0) {
             userVesting[_msgSender()][_id].totalAmount += (amount *
                 _presale.baseDecimals);
@@ -668,7 +801,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                         _presale.vestingPeriod
                 );
             }
-        sendValue(payable(owner()), ethAmount);
+        sendValue(payable(address(this)), ethAmount);
         if (excess > 0) sendValue(payable(_msgSender()), excess);
         emit TokensBought(
             _msgSender(),
@@ -761,6 +894,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
      */
     function claim(address user, uint256 _id) public returns (bool) {
         uint256 amount = claimableAmount(user, _id);
+        require(presale[_id].presaleFinalized == true, "Liquidity has not been added yet")
         require(amount > 0, "Zero claim amount");
         require(
             presale[_id].saleToken != address(0),
@@ -792,6 +926,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         external
         returns (bool)
     {
+        require(presale[_id].presaleFinalized == true, "Liquidity has not been added yet")
         require(users.length > 0, "Zero users length");
         for (uint256 i; i < users.length; i++) {
             require(claim(users[i], _id), "Claim failed");
