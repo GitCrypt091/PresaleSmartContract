@@ -66,53 +66,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     mapping(uint256 => Presale) public presale;
     mapping(address => mapping(uint256 => Vesting)) public userVesting;
 
-    event AddedToWhitelist(
-        uint256 id,
-        address[] wallets
-    );
-
-    event RemovedFromWhitelist(
-        uint256 id,
-        address[] wallets
-    );
-
-    event PresaleCreated(
-        uint256 indexed _id,
-        uint256 _totalTokens,
-        uint256 _maxTokensSell,
-        uint256 _tokensForLiquidity,
-        uint256 _startTime1,
-        uint256 _endTime1,
-        uint256 _startTime2,
-        uint256 _endTime2
-    );
-
-    event TokensBought(
-        address indexed user,
-        uint256 indexed id,
-        address indexed purchaseToken,
-        uint256 tokensBought,
-        uint256 amountPaid,
-        uint256 timestamp
-    );
-
-    event TokensClaimed(
-        address indexed user,
-        uint256 indexed id,
-        uint256 amount,
-        uint256 timestamp
-    );
-
-    event PresaleTokenAddressUpdated(
-        address indexed prevValue,
-        address indexed newValue,
-        uint256 timestamp
-    );
-
-    event PresalePaused(uint256 indexed id, uint256 timestamp);
-    event PresaleUnpaused(uint256 indexed id, uint256 timestamp);
-    event PresaleFinalized(uint256 indexed id, uint256 timestamp);
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
@@ -174,7 +127,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
         presale[presaleId] = Presale(timing, data, vesting, buyData);
 
-        emit PresaleCreated(presaleId, _tokensToSell, _maxAmountTokensForSalePerUser, _amountTokensForLiquidity, 0, 0, 0, 0);
     }
 
     /**
@@ -294,7 +246,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         for (uint256 i = 0; i < _wallets.length; i++) {
             presale[_id].presaleBuyData.whitelist.push(_wallets[i]);
         }
-        emit AddedToWhitelist(_id, _wallets);
     }
 
     /**
@@ -315,7 +266,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                 }
             }
         }
-        emit RemovedFromWhitelist(_id, _wallets);
     }
 
     /**
@@ -348,11 +298,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         require(_newAddress != address(0), "Zero token address");
         address prevValue = presale[_id].presaleData.saleToken;
         presale[_id].presaleData.saleToken = _newAddress;
-        emit PresaleTokenAddressUpdated(
-            prevValue,
-            _newAddress,
-            block.timestamp
-        );
     }
 
     /**
@@ -433,7 +378,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     function pausePresale(uint256 _id) external checkPresaleId(_id) onlyOwner {
         require(!paused[_id], "Already paused");
         paused[_id] = true;
-        emit PresalePaused(_id, block.timestamp);
     }
 
     /**
@@ -447,7 +391,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     {
         require(paused[_id], "Not paused");
         paused[_id] = false;
-        emit PresaleUnpaused(_id, block.timestamp);
     }
 
     /**
@@ -462,7 +405,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         require(presale[_id].presaleBuyData.presaleFinalized == false, "already finalized");
         transferMarketingFunds(_id);
         addLiquidity(_id);
-        emit PresaleFinalized(_id, block.timestamp);
     }
 
     function validateTiming(PresaleTiming memory _timing) internal view returns (bool) {
@@ -621,14 +563,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         }
         sendValue(payable(address(this)), ethAmount);
         if (excess > 0) sendValue(payable(_msgSender()), excess);
-        emit TokensBought(
-            _msgSender(),
-            _id,
-            address(0),
-            amount,
-            ethAmount,
-            block.timestamp
-        );
         return true;
     }
 
@@ -710,7 +644,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             amount
         );
         require(status, "Token transfer failed");
-        emit TokensClaimed(user, _id, amount, block.timestamp);
         return true;
     }
 
