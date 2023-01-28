@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0 <0.9.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
+contract TokenPreSale is ReentrancyGuard, Ownable {
     uint256 public presaleId;
     uint256 public BASE_MULTIPLIER;
     uint256 public MONTH;
@@ -63,17 +62,12 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     mapping(uint256 => Presale) public presale;
     mapping(address => mapping(uint256 => Vesting)) public userVesting;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() initializer {}
-
     /**
      * @dev Initializes the contract and sets key parameters
      * @param _router Router contract to add liquidity to
      * @param _weth WETH address
      */
-    function initialize(address _weth, address _router) external initializer {
-        __Ownable_init_unchained();
-        __ReentrancyGuard_init_unchained();
+    function initialize(address _weth, address _router) external {
         BASE_MULTIPLIER = (10**18);
         MONTH = (30 * 24 * 3600);
         WETH = _weth;
@@ -601,13 +595,13 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         );
         require(
             amount <=
-                IERC20Upgradeable(presale[_id].presaleData.saleToken).balanceOf(
+                IERC20(presale[_id].presaleData.saleToken).balanceOf(
                     address(this)
                 ),
             "Not enough tokens in the contract"
         );
         userVesting[user][_id].claimedAmount += amount;
-        bool status = IERC20Upgradeable(presale[_id].presaleData.saleToken).transfer(
+        bool status = IERC20(presale[_id].presaleData.saleToken).transfer(
             user,
             amount
         );
