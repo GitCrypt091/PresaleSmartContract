@@ -10,6 +10,6 @@
   "devDependencies": {
     "dotenv": "^16.0.3",
     "solc": "^0.8.17",
-    "truffle-plugin-verify": "^0.5.32"
+    "truffle-plugin-verify": "^0.5.33"
   }
 }

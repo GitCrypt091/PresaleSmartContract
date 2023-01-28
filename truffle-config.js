@@ -28,6 +28,10 @@ module.exports = {
     'truffle-plugin-verify'
   ],
 
+  api_keys: {
+    etherscan: '8J4ZDUSARGNTS3GS8HNY53FN2IGSPJ1K65',
+  },
+
   networks: {
     development: {
       host: "127.0.0.1",     // Localhost (default: none)

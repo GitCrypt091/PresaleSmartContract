@@ -11,7 +11,6 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     uint256 public presaleId;
     uint256 public BASE_MULTIPLIER;
     uint256 public MONTH;
-    address public WETH;
     address public ROUTER;
 
     struct PresaleTiming {
@@ -62,17 +61,12 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     mapping(uint256 => Presale) public presale;
     mapping(address => mapping(uint256 => Vesting)) public userVesting;
 
-    /**
-     * @dev Initializes the contract and sets key parameters
-     * @param _router Router contract to add liquidity to
-     * @param _weth WETH address
-     */
-    function initialize(address _weth, address _router) external {
+    constructor(address _router) public {
         BASE_MULTIPLIER = (10**18);
         MONTH = (30 * 24 * 3600);
-        WETH = _weth;
         ROUTER = _router;
     }
+
 
     /**
      * @dev Creates a new presale
@@ -332,6 +326,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         checkPresaleId(_id)
         onlyOwner
     {
+        require(validateMarketingPercentage(_newMarketingPercentage), "Can not be greater than 40 percent");
         presale[_id].presaleBuyData.marketingPercentage = _newMarketingPercentage;
     }
 
