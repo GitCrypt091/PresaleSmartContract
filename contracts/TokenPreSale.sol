@@ -290,7 +290,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         onlyOwner
     {
         require(_newAddress != address(0), "Zero token address");
-        address prevValue = presale[_id].presaleData.saleToken;
         presale[_id].presaleData.saleToken = _newAddress;
     }
 
@@ -510,7 +509,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     /**
      * @dev To buy into a presale using ETH
      * @param _id Presale id
-     * @param amount No of tokens to buy
+     * @param amount No of tokens to buy. not in wei
      */
     function buyWithEth(uint256 _id, uint256 amount)
         external

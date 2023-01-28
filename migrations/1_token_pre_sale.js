@@ -22,26 +22,54 @@ module.exports = async function (deployer) {
 
 
   // Deploy Presale Contract
-  const presaleInstance = await deployProxy(TokenPreSale, ['0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', bscWETH, bscRouter], { deployer });
+  const presaleInstance = await deployProxy(TokenPreSale, [goerliWETH, goerliRouter], { deployer });
   console.log('Deployed', presaleInstance.address);
 
   // Initiate Presale
-  await presaleInstance.createPresale(10, 1000000, 1000000, 18, 0, 0, 20, false, ['0x524e4444e4A38D00Dde292a3a121a5129e1f03aB'])
-  await presaleInstance.addSaleTimes(1, 1674925807, 1674936607, 1674925807, 1674936607, 1674936607)
+  const _price = "100000000000000"
+  const _tokensToSell = "500000000000000000000000"
+  const _maxAmountTokensForSalePerUser = "500000000000000000000000"
+  const _amountTokensForLiquidity = "500000000000000000000000"
+  const _baseDecimals = "18"
+  const _inSale = _tokensToSell
+  const _vestingCliff = 0
+  const _vestingPeriod = 0
+  const _marketingPercentage = 20
+  const _presaleFinalized = false
+  const _whitelist = ['0x524e4444e4A38D00Dde292a3a121a5129e1f03aB']
+
+  await presaleInstance.createPresale(_price, _tokensToSell, _maxAmountTokensForSalePerUser, _amountTokensForLiquidity, _baseDecimals, _inSale, _vestingCliff, _vestingPeriod, _marketingPercentage, _presaleFinalized, _whitelist)
+
+
+  // Add Time
+  const _startTimePhase1 = "1674928558"
+  const _endTimePhase1  = "1674930058"
+  const _startTimePhase2  = "1674928558"
+  const _endTimePhase2  = "1674930058"
+  const _vestingStartTime  = _endTimePhase2
+
+  await presaleInstance.addSaleTimes(1, _startTimePhase1, _endTimePhase1, _startTimePhase2, _vestingStartTime, 1674936607)
   // add me to Presale
-  await presaleInstance.addToWhitelist(1, [0x524e4444e4A38D00Dde292a3a121a5129e1f03aB])
+  await presaleInstance.addToWhitelist(1, ['0x57b1fF270fEd868f819191fc72f10D6403441447', '0x018910538C95459457eAFf266cD25c45618c2A9f'])
   
+  TokenPreSale.deployed().then(function(instance){ return instance.buyWithEth('1','1', {from: '0x524e4444e4A38D00Dde292a3a121a5129e1f03aB', value: '1000000000000000' }); })
+  
+
   /*
-  
+
+  // Buy with ETH, 1 token
+  await presaleInstance.buyWithEth('1','1000000000000000000')
+
+  // check how much I can claim
+  const claimableAmount = await presaleInstance.claimableAmount('0x524e4444e4A38D00Dde292a3a121a5129e1f03aB', "1");
+  console.log("I can claim: ", claimableAmount, " Tokens")
+
   // Deploy Mock Token
   const MockInstance = await deployer.deploy(TestErc20Token);
   // Transfer all Mock Tokens to Presale Contract
   await MockInstance.transfer(presaleInstance.address, '1000000000000000000000000000')
-  // Buy with ETH, 1 token
-  await presaleInstance.buyWithEth('1','1000000000000000000')
-  // check how much I can claim
-  const claimableAmount = await presaleInstance.claimableAmount('0x524e4444e4A38D00Dde292a3a121a5129e1f03aB', "1");
-  console.log("I can claim: ", claimableAmount, " Tokens")
+  
+  
   // claim my tokens
   await presaleInstance.claim('0x524e4444e4A38D00Dde292a3a121a5129e1f03aB','1')
   // finalize presale

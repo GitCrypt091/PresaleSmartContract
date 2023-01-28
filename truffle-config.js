@@ -41,7 +41,7 @@ module.exports = {
       timeoutBlocks: 200,
       skipDryRun: true,
       stackSize: 18192,
-      networkCheckTimeout: 100000
+      networkCheckTimeout: 10000
     },
     bsc: {
       provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, `https://bsc-dataseed1.binance.org`),
@@ -56,7 +56,8 @@ module.exports = {
       network_id: '5',
       networkCheckTimeout: 10000,
       timeoutBlocks: 200,
-      stackSize: 18192
+      stackSize: 18192,
+      networkCheckTimeout: 10000
     }
   },
 
