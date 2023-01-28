@@ -35,12 +35,13 @@ module.exports = {
       network_id: "*",       // Any network (default: none)
     },
     bscTestNet: {
-      provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, `https://data-seed-prebsc-1-s1.binance.org:8545`),
+      provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, `https://data-seed-prebsc-2-s3.binance.org:8545`),
       network_id: 97,
       confirmations: 10,
       timeoutBlocks: 200,
       skipDryRun: true,
-      stackSize: 18192
+      stackSize: 18192,
+      networkCheckTimeout: 100000
     },
     bsc: {
       provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, `https://bsc-dataseed1.binance.org`),
@@ -51,7 +52,7 @@ module.exports = {
       stackSize: 18192
     },
     goerli: {
-      provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, 'https://goerli.infura.io/v3/' + process.env.INFURA_API_KEY),
+      provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, 'https://rpc.ankr.com/eth_goerli'),
       network_id: '5',
       networkCheckTimeout: 10000,
       timeoutBlocks: 200,

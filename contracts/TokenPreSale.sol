@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     uint256 public presaleId;
@@ -60,8 +59,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         uint256 claimEnd;
     }
 
-    AggregatorV3Interface internal aggregatorInterface; // https://docs.chain.link/docs/ethereum-addresses/ => (ETH / USD)
-
     mapping(uint256 => bool) public paused;
     mapping(uint256 => Presale) public presale;
     mapping(address => mapping(uint256 => Vesting)) public userVesting;
@@ -74,12 +71,9 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
      * @param _router Router contract to add liquidity to
      * @param _weth WETH address
      */
-    function initialize(address _oracle, address _weth, address _router) external initializer {
-        require(_oracle != address(0), "Zero aggregator address");
-        require(_router != address(0), "Zero router address");
+    function initialize(address _weth, address _router) external initializer {
         __Ownable_init_unchained();
         __ReentrancyGuard_init_unchained();
-        aggregatorInterface = AggregatorV3Interface(_oracle);
         BASE_MULTIPLIER = (10**18);
         MONTH = (30 * 24 * 3600);
         WETH = _weth;
@@ -88,7 +82,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
     /**
      * @dev Creates a new presale
-     * @param _price Per token price multiplied by (10**18)
+     * @param _price Per token price multiplied by (10**18). how much ETH does 1 token cost
      * @param _tokensToSell No of tokens to sell without denomination. If 1 million tokens to be sold then - 1_000_000 has to be passed
      * @param _maxAmountTokensForSalePerUser Max no of tokens someone can buy
      * @param _amountTokensForLiquidity Amount of tokens for liquidity
@@ -477,15 +471,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         );
     }
 
-    /**
-     * @dev To get latest ethereum price in 10**18 format
-     */
-    function getLatestPrice() public view returns (uint256) {
-        (, int256 price, , , ) = aggregatorInterface.latestRoundData();
-        price = (price * (10**10));
-        return uint256(price);
-    }
-
 
     modifier checkPresaleId(uint256 _id) {
         require(_id > 0 && _id <= presaleId, "Invalid presale id");
@@ -537,8 +522,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     {
         require(amount <= presale[_id].presaleData.maxAmountTokensForSalePerUser, "You are trying to buy too many tokens");
         require(!paused[_id], "Presale paused");
-        uint256 usdPrice = amount * presale[_id].presaleData.price;
-        uint256 ethAmount = (usdPrice * BASE_MULTIPLIER) / getLatestPrice();
+        uint256 ethAmount = amount * presale[_id].presaleData.price;
         require(msg.value >= ethAmount, "Less payment");
         uint256 excess = msg.value - ethAmount;
         presale[_id].presaleData.inSale -= amount;
@@ -564,21 +548,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         sendValue(payable(address(this)), ethAmount);
         if (excess > 0) sendValue(payable(_msgSender()), excess);
         return true;
-    }
-
-    /**
-     * @dev Helper funtion to get ETH price for given amount
-     * @param _id Presale id
-     * @param amount No of tokens to buy
-     */
-    function ethBuyHelper(uint256 _id, uint256 amount)
-        external
-        view
-        checkPresaleId(_id)
-        returns (uint256 ethAmount)
-    {
-        uint256 usdPrice = amount * presale[_id].presaleData.price;
-        ethAmount = (usdPrice * BASE_MULTIPLIER) / getLatestPrice();
     }
 
 

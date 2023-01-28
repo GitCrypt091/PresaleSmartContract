@@ -14,12 +14,15 @@ module.exports = async function (deployer) {
   // Goerli ETH/USDT Oracle: 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e -> https://docs.chain.link/docs/data-feeds/price-feeds/addresses/
   // TestUSDT Goerli (created with TestUSDT contract) = 0x2BDc3A5CC1DFB531d6eB77812D08bD8C7201c683
 
-  const WETH = "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"
-  const router = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D" 
+  const goerliWETH = "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"
+  const goerliRouter = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D" 
+
+  const bscWETH = "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd"
+  const bscRouter = "0x9Ac64Cc6e4415144C455BD8E4837Fea55603e5c3"
 
 
   // Deploy Presale Contract
-  const presaleInstance = await deployProxy(TokenPreSale, ['0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', WETH, router], { deployer });
+  const presaleInstance = await deployProxy(TokenPreSale, ['0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', bscWETH, bscRouter], { deployer });
   console.log('Deployed', presaleInstance.address);
 
   // Initiate Presale
