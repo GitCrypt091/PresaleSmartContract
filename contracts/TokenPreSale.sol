@@ -87,13 +87,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         uint256 _endTime2
     );
 
-    event PresaleUpdated(
-        bytes32 indexed key,
-        uint256 prevValue,
-        uint256 newValue,
-        uint256 timestamp
-    );
-
     event TokensBought(
         address indexed user,
         uint256 indexed id,
@@ -177,7 +170,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         PresaleVesting memory vesting = PresaleVesting(0, _vestingCliff, _vestingPeriod);
         PresaleBuyData memory buyData = PresaleBuyData(_marketingPercentage, _presaleFinalized, _whitelist);
 
-
         presaleId++;
 
         presale[presaleId] = Presale(timing, data, vesting, buyData);
@@ -203,36 +195,27 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     uint256 _vestingStartTime 
     ) external checkPresaleId(_id) onlyOwner {
         require(_startTimePhase1 > 0 || _endTimePhase1 > 0 || _startTimePhase2 > 0 || _endTimePhase2 > 0 || _vestingStartTime > 0, "Invalid parameters");
-        uint256 prevValue;
 
         if (_startTimePhase1 > 0) {
             require(block.timestamp < _startTimePhase1, "Sale time in past");
-            prevValue = presale[_id].presaleTiming.startTimePhase1;
             presale[_id].presaleTiming.startTimePhase1 = _startTimePhase1;
-            emit PresaleUpdated(bytes32("START"), prevValue, _startTimePhase1, block.timestamp);
         }
 
         if (_endTimePhase1 > 0) {
             require(block.timestamp < _endTimePhase1, "Sale end in past");
             require(_endTimePhase1 > _startTimePhase1, "Sale ends before sale start");
-            prevValue = presale[_id].presaleTiming.endTimePhase1;
             presale[_id].presaleTiming.endTimePhase1 = _endTimePhase1;
-            emit PresaleUpdated(bytes32("END"), prevValue, _endTimePhase1, block.timestamp);
         }
 
         if (_startTimePhase2 > 0) {
             require(block.timestamp < _startTimePhase2, "Sale time in past");
-            prevValue = presale[_id].presaleTiming.startTimePhase2;
             presale[_id].presaleTiming.startTimePhase2 = _startTimePhase2;
-            emit PresaleUpdated(bytes32("START"), prevValue, _startTimePhase2, block.timestamp);
         }
 
         if (_endTimePhase2 > 0) {
             require(block.timestamp < _endTimePhase2, "Sale end in past");
             require(_endTimePhase2 > _startTimePhase2, "Sale ends before sale start");
-            prevValue = presale[_id].presaleTiming.endTimePhase2;
             presale[_id].presaleTiming.endTimePhase2 = _endTimePhase2;
-            emit PresaleUpdated(bytes32("END"), prevValue, _endTimePhase2, block.timestamp);
         }
 
         if (_vestingStartTime > 0) {
@@ -240,9 +223,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             _vestingStartTime >= presale[_id].presaleTiming.endTimePhase2,
             "Vesting starts before Presale ends"
         );
-        prevValue = presale[_id].presaleVesting.vestingStartTime;
             presale[_id].presaleVesting.vestingStartTime = _vestingStartTime;
-            emit PresaleUpdated(bytes32("END"), prevValue, _vestingStartTime, block.timestamp);
         }
     }
 
@@ -262,7 +243,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     uint256 _endTimePhase2
     ) external checkPresaleId(_id) onlyOwner {
         require(_startTimePhase1 > 0 || _endTimePhase1 > 0 || _startTimePhase2 > 0 || _endTimePhase2 > 0, "Invalid parameters");
-        uint256 prevValue;
 
         if (_startTimePhase1 > 0) {
             require(
@@ -270,9 +250,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                 "Sale already started"
             );
             require(block.timestamp < _startTimePhase1, "Sale time in past");
-            prevValue = presale[_id].presaleTiming.startTimePhase1;
             presale[_id].presaleTiming.startTimePhase1 = _startTimePhase1;
-            emit PresaleUpdated(bytes32("START"), prevValue, _startTimePhase1, block.timestamp);
         }
 
         if (_endTimePhase1 > 0) {
@@ -281,9 +259,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                 "Sale already ended"
             );
             require(_endTimePhase1 > presale[_id].presaleTiming.startTimePhase1, "Invalid endTime");
-            prevValue = presale[_id].presaleTiming.endTimePhase1;
             presale[_id].presaleTiming.endTimePhase1 = _endTimePhase1;
-            emit PresaleUpdated(bytes32("END"), prevValue, _endTimePhase1, block.timestamp);
         }
 
         if (_startTimePhase2 > 0) {
@@ -292,9 +268,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                 "Sale already started"
             );
             require(block.timestamp < _startTimePhase2, "Sale time in past");
-            prevValue = presale[_id].presaleTiming.startTimePhase2;
             presale[_id].presaleTiming.startTimePhase2 = _startTimePhase2;
-            emit PresaleUpdated(bytes32("START"), prevValue, _startTimePhase2, block.timestamp);
         }
 
         if (_endTimePhase2 > 0) {
@@ -303,14 +277,9 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
                 "Sale already ended"
             );
             require(_endTimePhase2 > presale[_id].presaleTiming.startTimePhase2, "Invalid endTime");
-            prevValue = presale[_id].presaleTiming.endTimePhase2;
             presale[_id].presaleTiming.endTimePhase2 = _endTimePhase2;
-            emit PresaleUpdated(bytes32("END"), prevValue, _endTimePhase2, block.timestamp);
         }
     }
-
-    
-
 
     /**
      * @dev To whitelist addresses
@@ -363,14 +332,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             _vestingStartTime >= presale[_id].presaleTiming.endTimePhase2,
             "Vesting starts before Presale ends"
         );
-        uint256 prevValue = presale[_id].presaleVesting.vestingStartTime;
         presale[_id].presaleVesting.vestingStartTime = _vestingStartTime;
-        emit PresaleUpdated(
-            bytes32("VESTING_START_TIME"),
-            prevValue,
-            _vestingStartTime,
-            block.timestamp
-        );
     }
 
     /**
@@ -412,14 +374,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             presale[_id].presaleTiming.startTimePhase2 > block.timestamp,
             "Sale already started"
         );
-        uint256 prevValue = presale[_id].presaleData.price;
         presale[_id].presaleData.price = _newPrice;
-        emit PresaleUpdated(
-            bytes32("PRICE"),
-            prevValue,
-            _newPrice,
-            block.timestamp
-        );
     }
 
      /**
@@ -432,14 +387,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         checkPresaleId(_id)
         onlyOwner
     {
-        uint256 prevValue = presale[_id].presaleData.maxAmountTokensForSalePerUser;
         presale[_id].presaleData.maxAmountTokensForSalePerUser = _newAmountTokensForLiquidity;
-        emit PresaleUpdated(
-            bytes32("TOKENSLIQUIDITY"),
-            prevValue,
-            _newAmountTokensForLiquidity,
-            block.timestamp
-        );
     }
 
      /**
@@ -452,14 +400,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         checkPresaleId(_id)
         onlyOwner
     {
-        uint256 prevValue = presale[_id].presaleBuyData.marketingPercentage;
         presale[_id].presaleBuyData.marketingPercentage = _newMarketingPercentage;
-        emit PresaleUpdated(
-            bytes32("MARKETINGPERCENTAGE"),
-            prevValue,
-            _newMarketingPercentage,
-            block.timestamp
-        );
     }
 
      /**
@@ -481,14 +422,7 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             presale[_id].presaleTiming.startTimePhase2 > block.timestamp,
             "Sale already started"
         );
-        uint256 prevValue = presale[_id].presaleData.maxAmountTokensForSalePerUser;
         presale[_id].presaleData.maxAmountTokensForSalePerUser = _newMaxAmountTokensForSalePerUser;
-        emit PresaleUpdated(
-            bytes32("MAXTOKENS"),
-            prevValue,
-            _newMaxAmountTokensForSalePerUser,
-            block.timestamp
-        );
     }
 
 
