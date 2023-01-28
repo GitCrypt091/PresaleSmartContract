@@ -644,6 +644,22 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         return false;
     }
 
+    function isPhaseOne(uint256 _id) internal view returns (bool) {
+        if (presale[_id].startTimePhase1 > block.timestamp && presale[_id].endTimePhase1 < block.timestamp) {
+            return true
+        } else {
+            return false
+        }
+    }
+
+    function isPhaseTwo(uint256 _id) internal view returns (bool) {
+        if (presale[_id].startTimePhase2 > block.timestamp && presale[_id].endTimePhase2 < block.timestamp) {
+            return true
+        } else {
+            return false
+        }
+    }
+
     /**
      * @dev To buy into a presale using USDT
      * @param _id Presale id
@@ -664,93 +680,47 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
         Presale memory _presale = presale[_id];
 
-        // Phase 1 is active and Phase 2 did not start yet. Whitelist required
-        if (block.timestamp > presale[_id].startTimePhase1 && block.timestamp < presale[_id].startTimePhase2) {
+        if (isPhaseOne(_id)) {
             require(isWhitelisted(_id, msg.sender), "Not whitelisted");
-            if (userVesting[_msgSender()][_id].totalAmount > 0) {
-                userVesting[_msgSender()][_id].totalAmount += (amount *
-                    _presale.baseDecimals);
-            } else {
-                userVesting[_msgSender()][_id] = Vesting(
-                    (amount * _presale.baseDecimals),
-                    0,
-                    _presale.vestingStartTime + _presale.vestingCliff,
-                    _presale.vestingStartTime +
-                        _presale.vestingCliff +
-                        _presale.vestingPeriod
-                );
-            }
-
-            uint256 ourAllowance = USDTInterface.allowance(
-                _msgSender(),
-                address(this)
+        }
+        if (userVesting[_msgSender()][_id].totalAmount > 0) {
+            userVesting[_msgSender()][_id].totalAmount += (amount *
+                _presale.baseDecimals);
+        } else {
+            userVesting[_msgSender()][_id] = Vesting(
+                (amount * _presale.baseDecimals),
+                0,
+                _presale.vestingStartTime + _presale.vestingCliff,
+                _presale.vestingStartTime +
+                    _presale.vestingCliff +
+                    _presale.vestingPeriod
             );
-            require(usdPrice <= ourAllowance, "Make sure to add enough allowance");
-            (bool success, ) = address(USDTInterface).call(
-                abi.encodeWithSignature(
-                    "transferFrom(address,address,uint256)",
-                    _msgSender(),
-                    address(this),
-                    usdPrice
-                )
-            );
-            require(success, "Token payment failed");
-            emit TokensBought(
-                _msgSender(),
-                _id,
-                address(USDTInterface),
-                amount,
-                usdPrice,
-                block.timestamp
-            );
-            return true;
         }
 
-        // Phase 2 is active. Everyone can buy
-        else if (block.timestamp > presale[_id].startTimePhase2 && block.timestamp < presale[_id].endTimePhase2) {
-            require(isWhitelisted(_id, msg.sender), "Not whitelisted");
-            if (userVesting[_msgSender()][_id].totalAmount > 0) {
-                userVesting[_msgSender()][_id].totalAmount += (amount *
-                    _presale.baseDecimals);
-            } else {
-                userVesting[_msgSender()][_id] = Vesting(
-                    (amount * _presale.baseDecimals),
-                    0,
-                    _presale.vestingStartTime + _presale.vestingCliff,
-                    _presale.vestingStartTime +
-                        _presale.vestingCliff +
-                        _presale.vestingPeriod
-                );
-            }
+        uint256 ourAllowance = USDTInterface.allowance(
+            _msgSender(),
+            address(this)
+        );
+        require(usdPrice <= ourAllowance, "Make sure to add enough allowance");
+        (bool success, ) = address(USDTInterface).call(
+            abi.encodeWithSignature(
+                "transferFrom(address,address,uint256)",
+                _msgSender(),
+                address(this),
+                usdPrice
+            )
+        );
+        require(success, "Token payment failed");
+        emit TokensBought(
+            _msgSender(),
+            _id,
+            address(USDTInterface),
+            amount,
+            usdPrice,
+            block.timestamp
+        );
+        return true;
 
-            uint256 ourAllowance = USDTInterface.allowance(
-                _msgSender(),
-                address(this)
-            );
-            require(usdPrice <= ourAllowance, "Make sure to add enough allowance");
-            (bool success, ) = address(USDTInterface).call(
-                abi.encodeWithSignature(
-                    "transferFrom(address,address,uint256)",
-                    _msgSender(),
-                    address(this),
-                    usdPrice
-                )
-            );
-            require(success, "Token payment failed");
-            emit TokensBought(
-                _msgSender(),
-                _id,
-                address(USDTInterface),
-                amount,
-                usdPrice,
-                block.timestamp
-            );
-            return true;
-        } 
-        // Phase 1 and Phase 2 are not active
-        else {
-            return false;
-        }
     }
 
     /**
@@ -776,50 +746,23 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         presale[_id].inSale -= amount;
         Presale memory _presale = presale[_id];
 
-        // Phase 1 is active and Phase 2 did not start yet. Whitelist required
-        if (block.timestamp > presale[_id].startTimePhase1 && block.timestamp < presale[_id].startTimePhase2) {
+        if (isPhaseOne(_id)) {
             require(isWhitelisted(_id, msg.sender), "Not whitelisted");
-            if (userVesting[_msgSender()][_id].totalAmount > 0) {
-            userVesting[_msgSender()][_id].totalAmount += (amount *
-                _presale.baseDecimals);
-            } else {
-                userVesting[_msgSender()][_id] = Vesting(
-                    (amount * _presale.baseDecimals),
-                    0,
-                    _presale.vestingStartTime + _presale.vestingCliff,
-                    _presale.vestingStartTime +
-                        _presale.vestingCliff +
-                        _presale.vestingPeriod
-                );
-            }
-            sendValue(payable(address(this)), ethAmount);
-            if (excess > 0) sendValue(payable(_msgSender()), excess);
-            emit TokensBought(
-                _msgSender(),
-                _id,
-                address(0),
-                amount,
-                ethAmount,
-                block.timestamp
-            );
-            return true;
         }
 
-        // Phase 2 is active. Everyone can buy
-        else if (block.timestamp > presale[_id].startTimePhase2 && block.timestamp < presale[_id].endTimePhase2) {
-            if (userVesting[_msgSender()][_id].totalAmount > 0) {
-            userVesting[_msgSender()][_id].totalAmount += (amount *
-                _presale.baseDecimals);
-            } else {
-                userVesting[_msgSender()][_id] = Vesting(
-                    (amount * _presale.baseDecimals),
-                    0,
-                    _presale.vestingStartTime + _presale.vestingCliff,
-                    _presale.vestingStartTime +
-                        _presale.vestingCliff +
-                        _presale.vestingPeriod
-                );
-            }
+        if (userVesting[_msgSender()][_id].totalAmount > 0) {
+        userVesting[_msgSender()][_id].totalAmount += (amount *
+            _presale.baseDecimals);
+        } else {
+            userVesting[_msgSender()][_id] = Vesting(
+                (amount * _presale.baseDecimals),
+                0,
+                _presale.vestingStartTime + _presale.vestingCliff,
+                _presale.vestingStartTime +
+                    _presale.vestingCliff +
+                    _presale.vestingPeriod
+            );
+        }
         sendValue(payable(address(this)), ethAmount);
         if (excess > 0) sendValue(payable(_msgSender()), excess);
         emit TokensBought(
@@ -831,13 +774,6 @@ contract TokenPreSale is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
             block.timestamp
         );
         return true;
-        } 
-        // Phase 1 and Phase 2 are not active
-        else {
-            return false;
-        }
-
-        
     }
 
     /**

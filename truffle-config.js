@@ -39,26 +39,33 @@ module.exports = {
       network_id: 97,
       confirmations: 10,
       timeoutBlocks: 200,
-      skipDryRun: true
+      skipDryRun: true,
+      stackSize: 18192
     },
     bsc: {
       provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, `https://bsc-dataseed1.binance.org`),
       network_id: 56,
       confirmations: 10,
       timeoutBlocks: 200,
-      skipDryRun: true
+      skipDryRun: true,
+      stackSize: 18192
     },
     goerli: {
       provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, 'https://goerli.infura.io/v3/' + process.env.INFURA_API_KEY),
       network_id: '5',
       networkCheckTimeout: 10000,
-      timeoutBlocks: 200
+      timeoutBlocks: 200,
+      stackSize: 18192
     }
   },
 
   // Set default mocha options here, use special reporters etc.
   mocha: {
     // timeout: 100000
+  },
+  optimizer: {
+    enabled: true,
+    runs: 200
   },
 
   // Configure your compilers
