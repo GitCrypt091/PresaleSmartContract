@@ -98,11 +98,11 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         address[] memory _whitelist
     ) external onlyOwner {
         require(validatePrice(_price), "Zero price");
-        require(validateMarketingPercentage(_marketingPercentage), "Can not be greater than 40 percent");
-        require(validatePresaleFinalized(_presaleFinalized), "Presale can not be finalized");
-        require(validateLiquidityFinalized(_liquidityFinalized), "Presale can not be finalized");
-        require(validateTokensToSell(_tokensToSell), "Zero tokens to sell");
-        require(validateBaseDecimals(_baseDecimals), "Zero decimals for the token");
+        require(validateMarketingPercentage(_marketingPercentage), ">40");
+        require(validatePresaleFinalized(_presaleFinalized), "false");
+        require(validateLiquidityFinalized(_liquidityFinalized), "false");
+        require(validateTokensToSell(_tokensToSell), "Zero tokens");
+        require(validateBaseDecimals(_baseDecimals), "Zero decimals");
         
         PresaleTiming memory timing = PresaleTiming(0, 0, 0, 0);
         PresaleData memory data = PresaleData(address(0), _price, _tokensToSell, _maxAmountTokensForSalePerUser, _amountTokensForLiquidity, _baseDecimals, _inSale);
@@ -135,24 +135,24 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         require(_startTimePhase1 > 0 || _endTimePhase1 > 0 || _startTimePhase2 > 0 || _endTimePhase2 > 0 || _vestingStartTime > 0, "Invalid parameters");
         
         if (_startTimePhase1 > 0) {
-            require(block.timestamp < _startTimePhase1, "Sale time in past");
+            require(block.timestamp < _startTimePhase1, "in past");
             presale[_id].presaleTiming.startTimePhase1 = _startTimePhase1;
         }
 
         if (_endTimePhase1 > 0) {
-            require(block.timestamp < _endTimePhase1, "Sale end in past");
-            require(_endTimePhase1 > _startTimePhase1, "Sale ends before sale start");
+            require(block.timestamp < _endTimePhase1, "in past");
+            require(_endTimePhase1 > _startTimePhase1, "ends before start");
             presale[_id].presaleTiming.endTimePhase1 = _endTimePhase1;
         }
 
         if (_startTimePhase2 > 0) {
-            require(block.timestamp < _startTimePhase2, "Sale time in past");
+            require(block.timestamp < _startTimePhase2, "in past");
             presale[_id].presaleTiming.startTimePhase2 = _startTimePhase2;
         }
 
         if (_endTimePhase2 > 0) {
-            require(block.timestamp < _endTimePhase2, "Sale end in past");
-            require(_endTimePhase2 > _startTimePhase2, "Sale ends before sale start");
+            require(block.timestamp < _endTimePhase2, "in past");
+            require(_endTimePhase2 > _startTimePhase2, "ends before start");
             presale[_id].presaleTiming.endTimePhase2 = _endTimePhase2;
         }
 
@@ -181,41 +181,41 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     uint256 _startTimePhase2,
     uint256 _endTimePhase2
     ) external checkPresaleId(_id) onlyOwner {
-        require(_startTimePhase1 > 0 || _endTimePhase1 > 0 || _startTimePhase2 > 0 || _endTimePhase2 > 0, "Invalid parameters");
+        require(_startTimePhase1 > 0 || _endTimePhase1 > 0 || _startTimePhase2 > 0 || _endTimePhase2 > 0, "Invalid");
 
         if (_startTimePhase1 > 0) {
             require(
                 block.timestamp < presale[_id].presaleTiming.startTimePhase1,
-                "Sale already started"
+                "already started"
             );
-            require(block.timestamp < _startTimePhase1, "Sale time in past");
+            require(block.timestamp < _startTimePhase1, "time in past");
             presale[_id].presaleTiming.startTimePhase1 = _startTimePhase1;
         }
 
         if (_endTimePhase1 > 0) {
             require(
                 block.timestamp < presale[_id].presaleTiming.endTimePhase1,
-                "Sale already ended"
+                "already ended"
             );
-            require(_endTimePhase1 > presale[_id].presaleTiming.startTimePhase1, "Invalid endTime");
+            require(_endTimePhase1 > presale[_id].presaleTiming.startTimePhase1, "Invalid");
             presale[_id].presaleTiming.endTimePhase1 = _endTimePhase1;
         }
 
         if (_startTimePhase2 > 0) {
             require(
                 block.timestamp < presale[_id].presaleTiming.startTimePhase2,
-                "Sale already started"
+                "already started"
             );
-            require(block.timestamp < _startTimePhase2, "Sale time in past");
+            require(block.timestamp < _startTimePhase2, "time in past");
             presale[_id].presaleTiming.startTimePhase2 = _startTimePhase2;
         }
 
         if (_endTimePhase2 > 0) {
             require(
                 block.timestamp < presale[_id].presaleTiming.endTimePhase2,
-                "Sale already ended"
+                "already ended"
             );
-            require(_endTimePhase2 > presale[_id].presaleTiming.startTimePhase2, "Invalid endTime");
+            require(_endTimePhase2 > presale[_id].presaleTiming.startTimePhase2, "Invalid");
             presale[_id].presaleTiming.endTimePhase2 = _endTimePhase2;
         }
     }
@@ -267,7 +267,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     {
         require(
             _vestingStartTime >= presale[_id].presaleTiming.endTimePhase2,
-            "Vesting starts before Presale ends"
+            "starts before Presale ends"
         );
         presale[_id].presaleVesting.vestingStartTime = _vestingStartTime;
     }
@@ -282,7 +282,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         checkPresaleId(_id)
         onlyOwner
     {
-        require(_newAddress != address(0), "Zero token address");
+        require(_newAddress != address(0), "Zero");
         presale[_id].presaleData.saleToken = _newAddress;
     }
 
@@ -296,7 +296,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         checkPresaleId(_id)
         onlyOwner
     {
-        require(_newPrice > 0, "Zero price");
+        require(_newPrice > 0, "Zero");
         require(
             presale[_id].presaleTiming.startTimePhase1 > block.timestamp,
             "Sale already started"
@@ -331,7 +331,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         checkPresaleId(_id)
         onlyOwner
     {
-        require(validateMarketingPercentage(_newMarketingPercentage), "Can not be greater than 40 percent");
+        require(validateMarketingPercentage(_newMarketingPercentage), ">40");
         presale[_id].presaleBuyData.marketingPercentage = _newMarketingPercentage;
     }
 
@@ -345,14 +345,14 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         checkPresaleId(_id)
         onlyOwner
     {
-        require(_newMaxAmountTokensForSalePerUser < presale[_id].presaleData.tokensToSell, "number too big");
+        require(_newMaxAmountTokensForSalePerUser < presale[_id].presaleData.tokensToSell, "too much");
         require(
             presale[_id].presaleTiming.startTimePhase1 > block.timestamp,
-            "Sale already started"
+            "already started"
         );
         require(
             presale[_id].presaleTiming.startTimePhase2 > block.timestamp,
-            "Sale already started"
+            "already started"
         );
         presale[_id].presaleData.maxAmountTokensForSalePerUser = _newMaxAmountTokensForSalePerUser;
     }
@@ -363,7 +363,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
      * @param _id Presale id to update
      */
     function pausePresale(uint256 _id) external checkPresaleId(_id) onlyOwner {
-        require(!paused[_id], "Already paused");
+        require(!paused[_id], "paused");
         paused[_id] = true;
     }
 
@@ -398,7 +398,6 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         uint256 marketingAmountETH = (ETHBalance * presale[_id].presaleBuyData.marketingPercentage) / 100;
         uint256 LiquidityAmountETH = ETHBalance - marketingAmountETH;
 
-        // allowance
         (bool successAllowanceSaleToken, ) = address(saleTokenAddress).call(
             abi.encodeWithSignature(
                 "approve(address,uint256)",
@@ -406,9 +405,8 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
                 presale[_id].presaleData.amountTokensForLiquidity
             )
         );
-        require(successAllowanceSaleToken, "Approve function call failed");
+        require(successAllowanceSaleToken, "Approve failed");
 
-        // add liquidity
         (bool successAddLiq, ) = address(ROUTER).call{value: LiquidityAmountETH}(
             abi.encodeWithSignature(
                 "addLiquidityETH(address,uint256,uint256,uint256,address,uint256)",
@@ -420,7 +418,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
                 block.timestamp + 600
             )
         );
-        require(successAddLiq, "Add liq failed");
+        require(successAddLiq, "liq failed");
         presale[_id].presaleBuyData.liquidityFinalized = true;
     }
 
@@ -433,7 +431,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         checkPresaleId(_id)
         onlyOwner
     {
-        require(presale[_id].presaleBuyData.presaleFinalized == false, "already finalized");
+        require(presale[_id].presaleBuyData.presaleFinalized == false, "finalized");
         uint256 ETHBalance = address(this).balance;
         uint256 marketingAmountETH = (ETHBalance * presale[_id].presaleBuyData.marketingPercentage) / 100;
 
@@ -479,7 +477,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     }
 
     modifier checkPresaleId(uint256 _id) {
-        require(_id > 0 && _id <= presaleId, "Invalid presale id");
+        require(_id > 0 && _id <= presaleId, "Invalid");
         _;
     }
 
@@ -491,7 +489,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         );
         require(
             amount > 0 && amount <= presale[_id].presaleData.inSale,
-            "Invalid sale amount"
+            "Invalid amount"
         );
         _;
     }
@@ -526,8 +524,8 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         nonReentrant
         returns (bool)
     {
-        require(amount <= presale[_id].presaleData.maxAmountTokensForSalePerUser, "You are trying to buy too many tokens");
-        require(!paused[_id], "Presale paused");
+        require(amount <= presale[_id].presaleData.maxAmountTokensForSalePerUser, "buying too many tokens");
+        require(!paused[_id], "paused");
         uint256 ethAmount = amount * presale[_id].presaleData.price;
         require(msg.value >= ethAmount, "Less payment");
         uint256 excess = msg.value - ethAmount;
@@ -595,7 +593,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
      */
     function claim(address user, uint256 _id) public returns (bool) {
         uint256 amount = claimableAmount(user, _id);
-        require(presale[_id].presaleBuyData.presaleFinalized == true, "Liquidity has not been added yet");
+        require(presale[_id].presaleBuyData.presaleFinalized == true, "Liq not added yet");
         require(amount > 0, "Zero claim amount");
         require(
             presale[_id].presaleData.saleToken != address(0),
@@ -626,7 +624,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         external
         returns (bool)
     {
-        require(presale[_id].presaleBuyData.presaleFinalized == true, "Liquidity has not been added yet");
+        require(presale[_id].presaleBuyData.presaleFinalized == true, "Liq not added yet");
         require(users.length > 0, "Zero users length");
         for (uint256 i; i < users.length; i++) {
             require(claim(users[i], _id), "Claim failed");
