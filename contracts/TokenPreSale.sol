@@ -40,6 +40,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     struct PresaleBuyData {
         uint256 marketingPercentage;
         bool presaleFinalized;
+        bool liquidityFinalized;
         address[] whitelist;
     }
 
@@ -79,6 +80,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
      * @param _vestingPeriod Total vesting period(after vesting cliff) in seconds
      * @param _marketingPercentage Percentage of raised funds that will go to the team
      * @param _presaleFinalized false by default, can only be true after liquidity has been added
+     * @param _liquidityFinalized false by default, can only be true after presale has been finalized
      * @param _whitelist array of addresses that are allowed to buy in phase 1
      */
     function createPresale(
@@ -92,18 +94,20 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         uint256 _vestingPeriod,
         uint256 _marketingPercentage,
         bool _presaleFinalized,
+        bool _liquidityFinalized,
         address[] memory _whitelist
     ) external onlyOwner {
         require(validatePrice(_price), "Zero price");
         require(validateMarketingPercentage(_marketingPercentage), "Can not be greater than 40 percent");
         require(validatePresaleFinalized(_presaleFinalized), "Presale can not be finalized");
+        require(validateLiquidityFinalized(_liquidityFinalized), "Presale can not be finalized");
         require(validateTokensToSell(_tokensToSell), "Zero tokens to sell");
         require(validateBaseDecimals(_baseDecimals), "Zero decimals for the token");
         
         PresaleTiming memory timing = PresaleTiming(0, 0, 0, 0);
         PresaleData memory data = PresaleData(address(0), _price, _tokensToSell, _maxAmountTokensForSalePerUser, _amountTokensForLiquidity, _baseDecimals, _inSale);
         PresaleVesting memory vesting = PresaleVesting(0, _vestingCliff, _vestingPeriod);
-        PresaleBuyData memory buyData = PresaleBuyData(_marketingPercentage, _presaleFinalized, _whitelist);
+        PresaleBuyData memory buyData = PresaleBuyData(_marketingPercentage, _presaleFinalized, _liquidityFinalized, _whitelist);
 
         presaleId++;
 
@@ -129,7 +133,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     uint256 _vestingStartTime 
     ) external checkPresaleId(_id) onlyOwner {
         require(_startTimePhase1 > 0 || _endTimePhase1 > 0 || _startTimePhase2 > 0 || _endTimePhase2 > 0 || _vestingStartTime > 0, "Invalid parameters");
-
+        
         if (_startTimePhase1 > 0) {
             require(block.timestamp < _startTimePhase1, "Sale time in past");
             presale[_id].presaleTiming.startTimePhase1 = _startTimePhase1;
@@ -159,6 +163,7 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         );
             presale[_id].presaleVesting.vestingStartTime = _vestingStartTime;
         }
+        
     }
 
     /**
@@ -379,14 +384,64 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
      * @dev To finalize the sale by adding the tokens to liquidity and sending the marketing percentage to the team
      * @param _id Presale id to update
      */
-    function finalizeAndAddLiquidity(uint256 _id)
+    function finalizeLiquidity(uint256 _id)
+        external
+        checkPresaleId(_id)
+        onlyOwner
+    {
+        require(presale[_id].presaleBuyData.liquidityFinalized == false, "already finalized");
+        // not for production
+        //require(presale[_id].presaleTiming.endTimePhase2 > block.timestamp, "presale not over yet");
+        address saleTokenAddress = presale[_id].presaleData.saleToken;
+        address teamAddress = owner();
+        uint256 ETHBalance = address(this).balance;
+        uint256 marketingAmountETH = (ETHBalance * presale[_id].presaleBuyData.marketingPercentage) / 100;
+        uint256 LiquidityAmountETH = ETHBalance - marketingAmountETH;
+
+        // allowance
+        (bool successAllowanceSaleToken, ) = address(saleTokenAddress).call(
+            abi.encodeWithSignature(
+                "approve(address,uint256)",
+                ROUTER,
+                presale[_id].presaleData.amountTokensForLiquidity
+            )
+        );
+        require(successAllowanceSaleToken, "Approve function call failed");
+
+        // add liquidity
+        (bool successAddLiq, ) = address(ROUTER).call{value: LiquidityAmountETH}(
+            abi.encodeWithSignature(
+                "addLiquidityETH(address,uint256,uint256,uint256,address,uint256)",
+                saleTokenAddress,
+                presale[_id].presaleData.amountTokensForLiquidity,
+                0,
+                0,
+                teamAddress,
+                block.timestamp + 600
+            )
+        );
+        require(successAddLiq, "Add liq failed");
+        presale[_id].presaleBuyData.liquidityFinalized = true;
+    }
+
+    /**
+     * @dev sending the marketing percentage to the team. can only be called once
+     * @param _id Presale id to update
+     */
+    function finalizePresale(uint256 _id)
         external
         checkPresaleId(_id)
         onlyOwner
     {
         require(presale[_id].presaleBuyData.presaleFinalized == false, "already finalized");
-        transferMarketingFunds(_id);
-        addLiquidity(_id);
+        uint256 ETHBalance = address(this).balance;
+        uint256 marketingAmountETH = (ETHBalance * presale[_id].presaleBuyData.marketingPercentage) / 100;
+
+        if (marketingAmountETH > 0) {
+            address payable teamAddress = payable(owner());
+            teamAddress.transfer(marketingAmountETH);
+        }
+        presale[_id].presaleBuyData.presaleFinalized = true;
     }
 
     function validateTiming(PresaleTiming memory _timing) internal view returns (bool) {
@@ -407,6 +462,10 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
         return !_presaleFinalized;
     }
 
+    function validateLiquidityFinalized(bool _liquidityFinalized) internal pure returns (bool) {
+        return !_liquidityFinalized;
+    }
+
     function validateTokensToSell(uint256 _tokensToSell) internal pure returns (bool) {
         return _tokensToSell > 0;
     }
@@ -418,47 +477,6 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
     function validateVesting(uint256 _vestingStartTime, uint256 endTimePhase2) internal pure returns (bool) {
         return _vestingStartTime >= endTimePhase2;
     }
-
-    function transferMarketingFunds(uint256 _id) internal {
-
-        uint256 ETHBalance = address(this).balance;
-
-        uint256 marketingAmountETH = ETHBalance * (presale[_id].presaleBuyData.marketingPercentage / 100);
-
-        if (ETHBalance > 0) {
-            address payable teamAddress = payable(owner());
-            teamAddress.transfer(marketingAmountETH);
-        }
-    }
-
-
-    function addLiquidity(uint256 _id) internal {
-        address saleTokenAddress = presale[_id].presaleData.saleToken;
-        uint256 ETHBalance = address(this).balance;
-
-        // allowance
-        (bool successAllowanceSaleToken, ) = address(saleTokenAddress).call(
-            abi.encodeWithSignature(
-                "approve(address,uint256)",
-                ROUTER,
-                presale[_id].presaleData.amountTokensForLiquidity
-            )
-        );
-
-        // add liquidity
-        (bool successAddLiq, ) = address(ROUTER).call{value: ETHBalance}(
-            abi.encodeWithSignature(
-                "addLiquidityETH(address,uint256,uint256,uint256,address,uint256)",
-                presale[_id].presaleData.saleToken,
-                presale[_id].presaleData.amountTokensForLiquidity,
-                0,
-                0,
-                owner(),
-                block.timestamp + 600
-            )
-        );
-    }
-
 
     modifier checkPresaleId(uint256 _id) {
         require(_id > 0 && _id <= presaleId, "Invalid presale id");
@@ -533,17 +551,12 @@ contract TokenPreSale is ReentrancyGuard, Ownable {
                     _presale.presaleVesting.vestingPeriod
             );
         }
-        sendValue(payable(address(this)), ethAmount);
-        if (excess > 0) sendValue(payable(_msgSender()), excess);
+        address payable recipient = payable(msg.sender);
+        if (excess > 0) recipient.transfer(excess);
         return true;
     }
 
 
-    function sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Low balance");
-        (bool success, ) = recipient.call{value: amount}("");
-        require(success, "ETH Payment failed");
-    }
 
     /**
      * @dev Helper funtion to get claimable tokens for a given presale.

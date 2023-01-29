@@ -30,18 +30,19 @@ module.exports = {
 
   api_keys: {
     etherscan: '8J4ZDUSARGNTS3GS8HNY53FN2IGSPJ1K65',
+    bscscan: 'MU2NN1RF629M146ZC436QBV3YVQW5UPJZ3',
   },
 
   networks: {
     development: {
       host: "127.0.0.1",     // Localhost (default: none)
       port: 7545,            // Standard BSC port (default: none)
-      network_id: "*",       // Any network (default: none)
+      network_id: "5777",       // Any network (default: none)
     },
     bscTestNet: {
       provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, `https://data-seed-prebsc-2-s3.binance.org:8545`),
       network_id: 97,
-      confirmations: 10,
+      confirmations: 2,
       timeoutBlocks: 200,
       skipDryRun: true,
       stackSize: 18192,
@@ -55,13 +56,20 @@ module.exports = {
       skipDryRun: true,
       stackSize: 18192
     },
-    goerli: {
-      provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, 'https://rpc.ankr.com/eth_goerli'),
-      network_id: '5',
-      networkCheckTimeout: 10000,
+    sepolia: {
+      provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, `https://rpc.sepolia.dev`),
+      network_id: 11155111,
+      confirmations: 10,
       timeoutBlocks: 200,
-      stackSize: 18192,
-      networkCheckTimeout: 10000
+      skipDryRun: true,
+      stackSize: 18192
+    },
+    goerli: {
+      provider: () => new HDWalletProvider(process.env.WALLET_PRIVATE_KEY, 'https://goerli.infura.io/v3/5ea5a676ea574f5fb2cc81ffc18af074'),
+      network_id: '5',
+      networkCheckTimeout: 100000,
+      timeoutBlocks: 200,
+      stackSize: 18192
     }
   },
 
